@@ -1,0 +1,2217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FlowLens — Full Build Guide</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #1c2230;
+    --border: #30363d;
+    --border-light: #21262d;
+    --blue: #3b82f6;
+    --blue-dim: #1d3a6e;
+    --purple: #a855f7;
+    --purple-dim: #3b1f6b;
+    --green: #22c55e;
+    --green-dim: #14532d;
+    --amber: #f59e0b;
+    --amber-dim: #451a03;
+    --red: #ef4444;
+    --text: #e6edf3;
+    --text-muted: #8b949e;
+    --text-dim: #484f58;
+    --radius: 8px;
+    --mono: 'Geist Mono', 'Fira Code', 'Cascadia Code', monospace;
+    --sans: 'Geist', 'Inter', system-ui, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* Layout */
+  .app { display: flex; height: 100vh; overflow: hidden; }
+
+  /* Sidebar */
+  .sidebar {
+    width: 260px;
+    min-width: 260px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  .sidebar-header {
+    padding: 20px 16px 12px;
+    border-bottom: 1px solid var(--border-light);
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .logo-icon {
+    width: 28px; height: 28px;
+    background: linear-gradient(135deg, var(--blue), var(--purple));
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 700; color: #fff;
+  }
+
+  .logo-text { font-size: 15px; font-weight: 600; color: var(--text); }
+  .logo-sub { font-size: 11px; color: var(--text-muted); }
+
+  .progress-bar-wrap {
+    background: var(--bg);
+    border-radius: 4px;
+    height: 5px;
+    overflow: hidden;
+    margin-top: 8px;
+  }
+
+  .progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--blue), var(--purple));
+    border-radius: 4px;
+    transition: width 0.4s ease;
+  }
+
+  .progress-label {
+    display: flex; justify-content: space-between;
+    font-size: 11px; color: var(--text-muted);
+    margin-top: 5px;
+  }
+
+  .phase-nav { padding: 8px 0; flex: 1; }
+
+  .phase-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 16px;
+    cursor: pointer;
+    border-radius: 0;
+    transition: background 0.15s;
+    font-size: 13px;
+    color: var(--text-muted);
+    border-left: 2px solid transparent;
+  }
+
+  .phase-nav-item:hover { background: var(--surface2); color: var(--text); }
+  .phase-nav-item.active { background: var(--surface2); color: var(--text); border-left-color: var(--blue); }
+  .phase-nav-item.done { color: var(--green); }
+  .phase-nav-item.done .phase-dot { background: var(--green); }
+
+  .phase-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--border);
+    flex-shrink: 0;
+  }
+
+  .phase-nav-item.active .phase-dot { background: var(--blue); }
+
+  .phase-count {
+    margin-left: auto;
+    font-size: 10px;
+    color: var(--text-dim);
+  }
+
+  /* Main content */
+  .main {
+    flex: 1;
+    overflow-y: auto;
+    padding: 32px 40px;
+    max-width: 900px;
+  }
+
+  .phase-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 28px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border-light);
+  }
+
+  .phase-badge {
+    background: var(--blue-dim);
+    color: var(--blue);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 4px;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+    margin-top: 4px;
+  }
+
+  .phase-title { font-size: 22px; font-weight: 600; color: var(--text); }
+  .phase-desc { font-size: 13px; color: var(--text-muted); margin-top: 4px; line-height: 1.5; }
+
+  /* Steps */
+  .step-group { margin-bottom: 28px; }
+
+  .step-group-title {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .step-group-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border-light);
+  }
+
+  .step {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 8px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+
+  .step:hover { border-color: var(--border); }
+  .step.completed { border-color: var(--green-dim); background: #0d1f14; }
+  .step.expanded { border-color: var(--blue-dim); }
+
+  .step-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 16px;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .step-check {
+    width: 18px; height: 18px;
+    border: 1.5px solid var(--border);
+    border-radius: 4px;
+    flex-shrink: 0;
+    margin-top: 1px;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+    cursor: pointer;
+  }
+
+  .step.completed .step-check {
+    background: var(--green);
+    border-color: var(--green);
+    color: #000;
+  }
+
+  .step-check svg { display: none; }
+  .step.completed .step-check svg { display: block; }
+
+  .step-info { flex: 1; }
+
+  .step-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    line-height: 1.4;
+  }
+
+  .step.completed .step-title { color: var(--text-muted); text-decoration: line-through; }
+
+  .step-meta {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+    flex-wrap: wrap;
+  }
+
+  .tag {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-weight: 500;
+  }
+
+  .tag-hard { background: #2d1a1a; color: var(--red); }
+  .tag-medium { background: var(--amber-dim); color: var(--amber); }
+  .tag-easy { background: var(--green-dim); color: var(--green); }
+  .tag-new { background: var(--purple-dim); color: var(--purple); }
+  .tag-tool { background: var(--surface2); color: var(--text-muted); }
+
+  .step-expand {
+    color: var(--text-dim);
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 1px;
+    transition: color 0.2s;
+  }
+
+  .step:hover .step-expand { color: var(--text-muted); }
+
+  .step-body {
+    display: none;
+    padding: 0 16px 16px 46px;
+    border-top: 1px solid var(--border-light);
+    padding-top: 14px;
+  }
+
+  .step.expanded .step-body { display: block; }
+
+  .step-body p {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+    line-height: 1.7;
+  }
+
+  .step-body h4 {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin: 14px 0 6px;
+  }
+
+  pre, code {
+    font-family: var(--mono);
+    font-size: 12px;
+  }
+
+  pre {
+    background: var(--bg);
+    border: 1px solid var(--border-light);
+    border-radius: 6px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    margin: 8px 0;
+    line-height: 1.6;
+    color: #c9d1d9;
+  }
+
+  code {
+    background: var(--surface2);
+    padding: 1px 5px;
+    border-radius: 3px;
+    color: var(--blue);
+    font-size: 12px;
+  }
+
+  .warn-box {
+    background: #1a1200;
+    border: 1px solid #3d2800;
+    border-radius: 6px;
+    padding: 10px 14px;
+    margin: 10px 0;
+    font-size: 12px;
+    color: var(--amber);
+    line-height: 1.6;
+  }
+
+  .warn-box::before { content: '⚠ '; }
+
+  .info-box {
+    background: #0d1f3c;
+    border: 1px solid var(--blue-dim);
+    border-radius: 6px;
+    padding: 10px 14px;
+    margin: 10px 0;
+    font-size: 12px;
+    color: #7eb3f5;
+    line-height: 1.6;
+  }
+
+  .info-box::before { content: '→ '; }
+
+  .success-box {
+    background: var(--green-dim);
+    border: 1px solid #166534;
+    border-radius: 6px;
+    padding: 10px 14px;
+    margin: 10px 0;
+    font-size: 12px;
+    color: #4ade80;
+    line-height: 1.6;
+  }
+
+  .success-box::before { content: '✓ '; }
+
+  ul.checklist { list-style: none; padding: 0; }
+  ul.checklist li {
+    font-size: 12px;
+    color: var(--text-muted);
+    padding: 3px 0 3px 16px;
+    position: relative;
+  }
+  ul.checklist li::before {
+    content: '·';
+    position: absolute; left: 4px;
+    color: var(--text-dim);
+  }
+
+  .nav-btns {
+    display: flex;
+    gap: 8px;
+    margin-top: 32px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-light);
+  }
+
+  .btn {
+    padding: 8px 18px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    transition: opacity 0.2s;
+  }
+
+  .btn:hover { opacity: 0.85; }
+  .btn-primary { background: var(--blue); color: #fff; }
+  .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  .phase-content { display: none; }
+  .phase-content.active { display: block; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="sidebar-header">
+      <div class="logo">
+        <div class="logo-icon">FL</div>
+        <div>
+          <div class="logo-text">FlowLens</div>
+          <div class="logo-sub">Build Guide</div>
+        </div>
+      </div>
+      <div class="progress-bar-wrap">
+        <div class="progress-bar-fill" id="progressFill" style="width:0%"></div>
+      </div>
+      <div class="progress-label">
+        <span id="progressText">0 of 0 done</span>
+        <span id="progressPct">0%</span>
+      </div>
+    </div>
+    <div class="phase-nav" id="phaseNav"></div>
+  </nav>
+
+  <!-- Main -->
+  <main class="main" id="mainContent"></main>
+</div>
+
+<script>
+const phases = [
+  {
+    id: 'p0',
+    label: 'Project Setup',
+    badge: 'PHASE 0',
+    title: 'Project Setup & Tooling',
+    desc: 'Initialize repositories, configure tools, and set up your development environment before writing a single line of product code.',
+    groups: [
+      {
+        title: 'Repository & tooling',
+        steps: [
+          {
+            title: 'Create monorepo with two workspaces',
+            difficulty: 'easy',
+            tags: ['Git'],
+            detail: `<p>FlowLens has a Next.js frontend and an Express backend. Keep them in one repo for simpler cross-referencing during solo development.</p>
+<h4>Commands</h4>
+<pre>mkdir flowlens && cd flowlens
+git init
+mkdir apps && mkdir apps/web apps/api
+echo "node_modules" >> .gitignore
+echo ".env*" >> .gitignore</pre>
+<h4>Root package.json</h4>
+<pre>{
+  "name": "flowlens",
+  "private": true,
+  "workspaces": ["apps/*"],
+  "scripts": {
+    "dev:web": "npm run dev --workspace=apps/web",
+    "dev:api": "npm run dev --workspace=apps/api"
+  }
+}</pre>
+<div class="info-box">Run both dev servers simultaneously with two terminals — one for web, one for api.</div>`
+          },
+          {
+            title: 'Set up ESLint + Prettier across both apps',
+            difficulty: 'easy',
+            tags: ['Tooling'],
+            detail: `<p>Consistent formatting prevents trivial git diffs and keeps the codebase readable.</p>
+<pre>npm install -D eslint prettier eslint-config-prettier --save-exact
+npx eslint --init</pre>
+<h4>Root .prettierrc</h4>
+<pre>{
+  "semi": true,
+  "singleQuote": true,
+  "tabWidth": 2,
+  "trailingComma": "all",
+  "printWidth": 100
+}</pre>`
+          },
+          {
+            title: 'Configure TypeScript in both apps',
+            difficulty: 'easy',
+            tags: ['TypeScript'],
+            detail: `<h4>apps/api/tsconfig.json</h4>
+<pre>{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "commonjs",
+    "outDir": "dist",
+    "rootDir": "src",
+    "strict": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true
+  },
+  "include": ["src/**/*"]
+}</pre>
+<div class="info-box">Next.js ships its own tsconfig — don't duplicate settings. Just extend the default Next.js one.</div>`
+          }
+        ]
+      },
+      {
+        title: 'Accounts to create',
+        steps: [
+          {
+            title: 'Create Supabase project',
+            difficulty: 'easy',
+            tags: ['Supabase'],
+            detail: `<p>Go to supabase.com → New Project. Choose a region close to your users. Note down:</p>
+<ul class="checklist">
+  <li>Project URL (NEXT_PUBLIC_SUPABASE_URL)</li>
+  <li>Anon key (NEXT_PUBLIC_SUPABASE_ANON_KEY)</li>
+  <li>Service role key (SUPABASE_SERVICE_ROLE_KEY) — backend only, never expose to frontend</li>
+  <li>Database connection string (DATABASE_URL)</li>
+</ul>
+<div class="warn-box">Service role key bypasses Row Level Security. Only use it in your Express backend, never in the browser.</div>`
+          },
+          {
+            title: 'Create Vercel project and link repo',
+            difficulty: 'easy',
+            tags: ['Vercel'],
+            detail: `<p>Go to vercel.com → Import Git Repository → select flowlens. Set root directory to <code>apps/web</code>.</p>
+<h4>Environment variables to add in Vercel dashboard</h4>
+<pre>NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+NEXT_PUBLIC_API_URL=https://your-api.railway.app</pre>
+<div class="info-box">Deploy the API separately on Railway. Vercel is for the Next.js frontend only.</div>`
+          },
+          {
+            title: 'Get Anthropic API key',
+            difficulty: 'easy',
+            tags: ['Anthropic'],
+            detail: `<p>Go to console.anthropic.com → API Keys → Create Key. Store it as <code>ANTHROPIC_API_KEY</code> in your API's environment. Never put this in the frontend.</p>`
+          }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'p1',
+    label: 'Database Schema',
+    badge: 'PHASE 1',
+    title: 'Database Schema (Supabase)',
+    desc: 'Design and create the Postgres schema. This is the most important phase — get it right before writing any application code.',
+    groups: [
+      {
+        title: 'Core tables',
+        steps: [
+          {
+            title: 'Create teams and users tables',
+            difficulty: 'easy',
+            tags: ['SQL', 'Supabase'],
+            detail: `<p>Run this in Supabase SQL Editor. FlowLens is team-scoped — every resource belongs to a team.</p>
+<pre>-- Teams
+create table teams (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  created_at timestamptz default now()
+);
+
+-- Profiles (extends Supabase auth.users)
+create table profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  team_id uuid references teams(id),
+  display_name text,
+  role text default 'member' check (role in ('owner','admin','member')),
+  created_at timestamptz default now()
+);</pre>
+<div class="info-box">Supabase handles auth.users automatically. profiles extends it with your app-specific fields.</div>`
+          },
+          {
+            title: 'Create workflows table',
+            difficulty: 'easy',
+            tags: ['SQL'],
+            detail: `<pre>create table workflows (
+  id uuid primary key default gen_random_uuid(),
+  team_id uuid not null references teams(id) on delete cascade,
+  name text not null,
+  platform text not null check (platform in ('n8n','zapier','make','manual')),
+  external_id text,  -- ID from the source platform
+  status text default 'healthy' check (status in ('healthy','degraded','failing','unknown')),
+  last_snapshot_at timestamptz,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+create index idx_workflows_team on workflows(team_id);
+create index idx_workflows_status on workflows(team_id, status);</pre>`
+          },
+          {
+            title: 'Create snapshots table (the most important table)',
+            difficulty: 'medium',
+            tags: ['SQL', 'JSONB'],
+            detail: `<p>Every version of a workflow is stored as an immutable snapshot. Never update a snapshot — only create new ones. This is the foundation of the diff engine.</p>
+<pre>create table snapshots (
+  id uuid primary key default gen_random_uuid(),
+  workflow_id uuid not null references workflows(id) on delete cascade,
+  team_id uuid not null references teams(id),
+
+  -- The normalised workflow structure (your platform-agnostic format)
+  normalised jsonb not null,
+
+  -- The raw original JSON from n8n/Zapier/Make (for reference)
+  raw jsonb,
+
+  -- Metadata
+  source text not null check (source in ('webhook','manual','import','api')),
+  label text,  -- e.g. "Last known working"
+  created_by uuid references profiles(id),
+  created_at timestamptz default now(),
+
+  -- Execution outcome that triggered this snapshot (if from webhook)
+  execution_status text check (execution_status in ('success','failure','unknown')),
+  error_message text
+);
+
+create index idx_snapshots_workflow on snapshots(workflow_id, created_at desc);
+create index idx_snapshots_team on snapshots(team_id);
+-- GIN index for querying inside JSONB
+create index idx_snapshots_normalised on snapshots using gin(normalised);</pre>
+<div class="warn-box">Never store raw credential values in snapshots. Strip them during the import/normalise step and replace with a placeholder like "credential_ref:shopify_oauth".</div>`
+          },
+          {
+            title: 'Create incidents and AI analyses tables',
+            difficulty: 'medium',
+            tags: ['SQL'],
+            detail: `<pre>-- Incidents: a detected failure event
+create table incidents (
+  id uuid primary key default gen_random_uuid(),
+  workflow_id uuid not null references workflows(id) on delete cascade,
+  team_id uuid not null references teams(id),
+  status text default 'open' check (status in ('open','resolved','dismissed')),
+  detected_at timestamptz default now(),
+  resolved_at timestamptz,
+
+  -- The two snapshots being compared
+  snapshot_before uuid references snapshots(id),
+  snapshot_after uuid references snapshots(id),
+
+  -- AI-generated analysis (stored here after generation)
+  root_cause text,
+  confidence numeric(3,2),
+  impact_summary text,
+  suggested_fix jsonb
+);
+
+create index idx_incidents_workflow on incidents(workflow_id, detected_at desc);
+create index idx_incidents_team_open on incidents(team_id) where status = 'open';</pre>`
+          },
+          {
+            title: 'Create change_log table',
+            difficulty: 'easy',
+            tags: ['SQL'],
+            detail: `<pre>-- Every meaningful change event attributed to a user or system
+create table change_log (
+  id uuid primary key default gen_random_uuid(),
+  workflow_id uuid not null references workflows(id) on delete cascade,
+  team_id uuid not null references teams(id),
+  snapshot_id uuid references snapshots(id),
+  actor_id uuid references profiles(id),
+  actor_type text default 'user' check (actor_type in ('user','system','ai')),
+  action text not null,  -- e.g. "snapshot_created", "restored", "ai_fix_applied"
+  diff_summary jsonb,    -- lightweight summary of what changed
+  created_at timestamptz default now()
+);
+
+create index idx_changelog_workflow on change_log(workflow_id, created_at desc);</pre>`
+          }
+        ]
+      },
+      {
+        title: 'Row Level Security',
+        steps: [
+          {
+            title: 'Enable RLS on all tables',
+            difficulty: 'medium',
+            tags: ['Security', 'Supabase'],
+            detail: `<p>RLS ensures users can only see data belonging to their team, enforced at the database level.</p>
+<pre>-- Enable RLS
+alter table teams enable row level security;
+alter table profiles enable row level security;
+alter table workflows enable row level security;
+alter table snapshots enable row level security;
+alter table incidents enable row level security;
+alter table change_log enable row level security;
+
+-- Helper function: get current user's team_id
+create or replace function get_my_team_id()
+returns uuid language sql security definer as $$
+  select team_id from profiles where id = auth.uid()
+$$;
+
+-- Policies: users see only their team's data
+create policy "team_workflows" on workflows
+  for all using (team_id = get_my_team_id());
+
+create policy "team_snapshots" on snapshots
+  for all using (team_id = get_my_team_id());
+
+create policy "team_incidents" on incidents
+  for all using (team_id = get_my_team_id());
+
+create policy "team_changelog" on change_log
+  for all using (team_id = get_my_team_id());</pre>
+<div class="info-box">Your Express backend uses the service role key which bypasses RLS — RLS only protects the frontend Supabase client calls.</div>`
+          }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'p2',
+    label: 'Express API',
+    badge: 'PHASE 2',
+    title: 'Express API (MVC)',
+    desc: 'Build the Node.js/Express backend with a clean MVC structure. This is your data engine — frontend talks to this, this talks to Supabase.',
+    groups: [
+      {
+        title: 'Project scaffold',
+        steps: [
+          {
+            title: 'Initialize Express app with MVC folder structure',
+            difficulty: 'easy',
+            tags: ['Express', 'TypeScript'],
+            detail: `<pre>cd apps/api
+npm init -y
+npm install express cors helmet morgan dotenv
+npm install @supabase/supabase-js @anthropic-ai/sdk
+npm install -D typescript ts-node-dev @types/express @types/node @types/cors</pre>
+<h4>Folder structure</h4>
+<pre>apps/api/src/
+├── controllers/
+│   ├── workflow.controller.ts
+│   ├── snapshot.controller.ts
+│   ├── incident.controller.ts
+│   ├── diff.controller.ts
+│   └── ai.controller.ts
+├── models/
+│   ├── workflow.model.ts
+│   ├── snapshot.model.ts
+│   └── incident.model.ts
+├── services/
+│   ├── normaliser.service.ts   ← converts platform JSON to FlowLens format
+│   ├── diff.service.ts         ← core diff algorithm
+│   ├── ai.service.ts           ← Anthropic SDK calls
+│   └── supabase.service.ts     ← DB client
+├── routes/
+│   ├── index.ts
+│   ├── workflow.routes.ts
+│   ├── snapshot.routes.ts
+│   ├── incident.routes.ts
+│   └── ai.routes.ts
+├── middleware/
+│   ├── auth.middleware.ts
+│   ├── validate.middleware.ts
+│   └── error.middleware.ts
+├── types/
+│   └── flowlens.types.ts
+└── app.ts</pre>`
+          },
+          {
+            title: 'Set up app.ts entry point',
+            difficulty: 'easy',
+            tags: ['Express'],
+            detail: `<h4>src/app.ts</h4>
+<pre>import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import morgan from 'morgan';
+import { errorMiddleware } from './middleware/error.middleware';
+import routes from './routes';
+
+const app = express();
+
+app.use(helmet());
+app.use(cors({ origin: process.env.FRONTEND_URL, credentials: true }));
+app.use(express.json({ limit: '5mb' })); // workflow JSON can be large
+app.use(morgan('dev'));
+
+app.use('/api/v1', routes);
+app.use(errorMiddleware);
+
+const PORT = process.env.PORT || 4000;
+app.listen(PORT, () => console.log(\`API running on port \${PORT}\`));
+
+export default app;</pre>`
+          },
+          {
+            title: 'Define shared TypeScript types',
+            difficulty: 'easy',
+            tags: ['TypeScript'],
+            detail: `<h4>src/types/flowlens.types.ts</h4>
+<pre>// The normalised node format — platform-agnostic
+export interface FlowNode {
+  id: string;
+  type: string;          // e.g. "http_request", "webhook", "filter"
+  label: string;
+  config: Record<string, unknown>;
+  credential_ref?: string;  // e.g. "shopify_oauth" (never the actual credential)
+  position?: { x: number; y: number };
+}
+
+export interface FlowEdge {
+  id: string;
+  source: string;  // node id
+  target: string;  // node id
+  label?: string;
+}
+
+export interface NormalisedWorkflow {
+  nodes: FlowNode[];
+  edges: FlowEdge[];
+  meta: {
+    platform: 'n8n' | 'zapier' | 'make' | 'manual';
+    version?: string;
+    name: string;
+  };
+}
+
+// Diff types
+export type DiffStatus = 'added' | 'removed' | 'modified' | 'unchanged';
+
+export interface NodeDiff {
+  nodeId: string;
+  nodeLabel: string;
+  status: DiffStatus;
+  changedFields?: Array<{ field: string; before: unknown; after: unknown }>;
+}
+
+export interface WorkflowDiff {
+  nodes: NodeDiff[];
+  edgesChanged: boolean;
+  summary: { added: number; removed: number; modified: number };
+}</pre>`
+          }
+        ]
+      },
+      {
+        title: 'Core services',
+        steps: [
+          {
+            title: 'Build the normaliser service',
+            difficulty: 'hard',
+            tags: ['Core Logic', 'New'],
+            detail: `<p>This is the most important service. It converts n8n/Zapier/Make JSON into your platform-agnostic FlowLens format. Start with n8n only.</p>
+<h4>src/services/normaliser.service.ts</h4>
+<pre>import { NormalisedWorkflow, FlowNode, FlowEdge } from '../types/flowlens.types';
+
+// Strip credentials from config before storage
+function stripCredentials(config: Record<string, unknown>): Record<string, unknown> {
+  const safe = { ...config };
+  const credentialKeys = ['apiKey', 'token', 'password', 'secret', 'credentials'];
+  credentialKeys.forEach(k => { if (k in safe) safe[k] = '[REDACTED]'; });
+  return safe;
+}
+
+export function normaliseN8n(raw: Record<string, unknown>): NormalisedWorkflow {
+  const nodes = ((raw.nodes as any[]) || []).map((n): FlowNode => ({
+    id: n.id,
+    type: n.type,
+    label: n.name || n.type,
+    config: stripCredentials(n.parameters || {}),
+    credential_ref: n.credentials
+      ? Object.keys(n.credentials)[0]
+      : undefined,
+    position: n.position ? { x: n.position[0], y: n.position[1] } : undefined,
+  }));
+
+  const edges = ((raw.connections as any) || {});
+  const flowEdges: FlowEdge[] = [];
+  Object.entries(edges).forEach(([sourceLabel, targets]: [string, any]) => {
+    const sourceNode = nodes.find(n => n.label === sourceLabel);
+    if (!sourceNode) return;
+    (targets.main || []).forEach((outputs: any[]) => {
+      outputs.forEach((conn: any) => {
+        const targetNode = nodes.find(n => n.label === conn.node);
+        if (targetNode) flowEdges.push({
+          id: \`\${sourceNode.id}->\${targetNode.id}\`,
+          source: sourceNode.id,
+          target: targetNode.id,
+        });
+      });
+    });
+  });
+
+  return {
+    nodes,
+    edges: flowEdges,
+    meta: { platform: 'n8n', name: (raw.name as string) || 'Unnamed', version: raw.versionId as string },
+  };
+}
+
+export function normalise(platform: string, raw: Record<string, unknown>): NormalisedWorkflow {
+  switch (platform) {
+    case 'n8n': return normaliseN8n(raw);
+    // TODO: case 'zapier': return normaliseZapier(raw);
+    // TODO: case 'make': return normaliseMake(raw);
+    default: throw new Error(\`Unsupported platform: \${platform}\`);
+  }
+}</pre>
+<div class="warn-box">Build normaliseZapier and normaliseMake only after n8n is fully working. Platform-specific edge cases will consume days if done in parallel.</div>`
+          },
+          {
+            title: 'Build the diff service',
+            difficulty: 'hard',
+            tags: ['Core Logic', 'New'],
+            detail: `<p>Compares two NormalisedWorkflow objects and returns a structured diff. This powers the Visual Compare screen.</p>
+<h4>src/services/diff.service.ts</h4>
+<pre>import { NormalisedWorkflow, WorkflowDiff, NodeDiff, FlowNode } from '../types/flowlens.types';
+
+function diffNodeConfig(before: Record<string, unknown>, after: Record<string, unknown>) {
+  const changed: Array<{ field: string; before: unknown; after: unknown }> = [];
+  const allKeys = new Set([...Object.keys(before), ...Object.keys(after)]);
+  allKeys.forEach(key => {
+    const bVal = JSON.stringify(before[key]);
+    const aVal = JSON.stringify(after[key]);
+    if (bVal !== aVal) changed.push({ field: key, before: before[key], after: after[key] });
+  });
+  return changed;
+}
+
+export function diffWorkflows(before: NormalisedWorkflow, after: NormalisedWorkflow): WorkflowDiff {
+  const beforeMap = new Map(before.nodes.map(n => [n.id, n]));
+  const afterMap = new Map(after.nodes.map(n => [n.id, n]));
+
+  const nodeDiffs: NodeDiff[] = [];
+
+  // Nodes in before
+  beforeMap.forEach((bNode, id) => {
+    const aNode = afterMap.get(id);
+    if (!aNode) {
+      nodeDiffs.push({ nodeId: id, nodeLabel: bNode.label, status: 'removed' });
+    } else {
+      const changedFields = diffNodeConfig(
+        bNode.config as Record<string, unknown>,
+        aNode.config as Record<string, unknown>
+      );
+      nodeDiffs.push({
+        nodeId: id,
+        nodeLabel: bNode.label,
+        status: changedFields.length > 0 ? 'modified' : 'unchanged',
+        changedFields: changedFields.length > 0 ? changedFields : undefined,
+      });
+    }
+  });
+
+  // Nodes added in after
+  afterMap.forEach((aNode, id) => {
+    if (!beforeMap.has(id)) {
+      nodeDiffs.push({ nodeId: id, nodeLabel: aNode.label, status: 'added' });
+    }
+  });
+
+  // Edge diff (simple: did the set of edges change?)
+  const beforeEdgeSet = new Set(before.edges.map(e => \`\${e.source}->\${e.target}\`));
+  const afterEdgeSet = new Set(after.edges.map(e => \`\${e.source}->\${e.target}\`));
+  const edgesChanged = [...beforeEdgeSet].some(e => !afterEdgeSet.has(e))
+    || [...afterEdgeSet].some(e => !beforeEdgeSet.has(e));
+
+  const summary = {
+    added: nodeDiffs.filter(n => n.status === 'added').length,
+    removed: nodeDiffs.filter(n => n.status === 'removed').length,
+    modified: nodeDiffs.filter(n => n.status === 'modified').length,
+  };
+
+  return { nodes: nodeDiffs, edgesChanged, summary };
+}</pre>`
+          },
+          {
+            title: 'Build the AI service',
+            difficulty: 'medium',
+            tags: ['Anthropic SDK', 'New'],
+            detail: `<h4>src/services/ai.service.ts</h4>
+<pre>import Anthropic from '@anthropic-ai/sdk';
+import { WorkflowDiff } from '../types/flowlens.types';
+
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+export interface RootCauseAnalysis {
+  root_cause: string;
+  confidence: number;      // 0.0 to 1.0
+  impact_summary: string;
+  affected_nodes: string[];
+  suggested_fix: {
+    description: string;
+    node_id?: string;
+    field?: string;
+    new_value?: unknown;
+  } | null;
+}
+
+export async function analyseRootCause(
+  diff: WorkflowDiff,
+  errorMessage?: string
+): Promise<RootCauseAnalysis> {
+  const prompt = \`You are a workflow automation debugging assistant.
+A workflow diff has been detected. Analyse it and identify the most likely root cause of failure.
+
+DIFF SUMMARY:
+\${diff.summary.added} nodes added, \${diff.summary.removed} nodes removed, \${diff.summary.modified} nodes modified.
+
+CHANGED NODES:
+\${JSON.stringify(diff.nodes.filter(n => n.status !== 'unchanged'), null, 2)}
+
+\${errorMessage ? \`ERROR MESSAGE FROM EXECUTION:\\n\${errorMessage}\` : ''}
+
+Respond ONLY with a JSON object matching this exact schema:
+{
+  "root_cause": "one sentence explanation of what broke and why",
+  "confidence": 0.0-1.0,
+  "impact_summary": "what downstream nodes/systems are affected",
+  "affected_nodes": ["node_id_1", "node_id_2"],
+  "suggested_fix": {
+    "description": "plain language fix",
+    "node_id": "optional: which node to change",
+    "field": "optional: which field to change",
+    "new_value": null
+  }
+}
+Return ONLY valid JSON. No explanation, no markdown.\`;
+
+  const response = await anthropic.messages.create({
+    model: 'claude-sonnet-4-6',
+    max_tokens: 1000,
+    messages: [{ role: 'user', content: prompt }],
+  });
+
+  const text = response.content[0].type === 'text' ? response.content[0].text : '';
+  return JSON.parse(text) as RootCauseAnalysis;
+}</pre>
+<div class="warn-box">Always wrap the JSON.parse in try/catch. If the AI returns malformed JSON, log it and return a fallback object rather than crashing the request.</div>`
+          }
+        ]
+      },
+      {
+        title: 'Controllers & Routes',
+        steps: [
+          {
+            title: 'Build workflow controller and routes',
+            difficulty: 'medium',
+            tags: ['Express', 'MVC'],
+            detail: `<h4>src/controllers/workflow.controller.ts</h4>
+<pre>import { Request, Response, NextFunction } from 'express';
+import { supabase } from '../services/supabase.service';
+
+export const getWorkflows = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { data, error } = await supabase
+      .from('workflows')
+      .select('*, snapshots(count)')
+      .eq('team_id', req.user.team_id)
+      .order('updated_at', { ascending: false });
+    if (error) throw error;
+    res.json({ workflows: data });
+  } catch (err) { next(err); }
+};
+
+export const getWorkflow = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { data, error } = await supabase
+      .from('workflows')
+      .select('*')
+      .eq('id', req.params.id)
+      .eq('team_id', req.user.team_id)
+      .single();
+    if (error) throw error;
+    if (!data) return res.status(404).json({ error: 'Workflow not found' });
+    res.json({ workflow: data });
+  } catch (err) { next(err); }
+};</pre>
+<h4>src/routes/workflow.routes.ts</h4>
+<pre>import { Router } from 'express';
+import { getWorkflows, getWorkflow } from '../controllers/workflow.controller';
+import { authMiddleware } from '../middleware/auth.middleware';
+
+const router = Router();
+router.use(authMiddleware);
+router.get('/', getWorkflows);
+router.get('/:id', getWorkflow);
+export default router;</pre>`
+          },
+          {
+            title: 'Build snapshot import endpoint',
+            difficulty: 'medium',
+            tags: ['Express', 'Core'],
+            detail: `<p>This is the most-used endpoint — it accepts a workflow JSON, normalises it, stores the snapshot, and updates the workflow record.</p>
+<h4>POST /api/v1/snapshots/import</h4>
+<pre>import { normalise } from '../services/normaliser.service';
+
+export const importSnapshot = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { workflow_id, platform, raw_json, source = 'import' } = req.body;
+
+    // 1. Normalise the platform-specific JSON
+    const normalised = normalise(platform, raw_json);
+
+    // 2. Store the snapshot
+    const { data: snapshot, error: snapErr } = await supabase
+      .from('snapshots')
+      .insert({
+        workflow_id,
+        team_id: req.user.team_id,
+        normalised,
+        raw: raw_json,
+        source,
+        created_by: req.user.id,
+      })
+      .select()
+      .single();
+
+    if (snapErr) throw snapErr;
+
+    // 3. Update workflow's last_snapshot_at
+    await supabase
+      .from('workflows')
+      .update({ last_snapshot_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+      .eq('id', workflow_id);
+
+    // 4. Log the change
+    await supabase.from('change_log').insert({
+      workflow_id, team_id: req.user.team_id,
+      snapshot_id: snapshot.id,
+      actor_id: req.user.id,
+      action: 'snapshot_created',
+    });
+
+    res.status(201).json({ snapshot });
+  } catch (err) { next(err); }
+};</pre>`
+          },
+          {
+            title: 'Build diff endpoint',
+            difficulty: 'medium',
+            tags: ['Core Logic'],
+            detail: `<h4>GET /api/v1/diff?from=snapshotId&to=snapshotId</h4>
+<pre>import { diffWorkflows } from '../services/diff.service';
+
+export const getDiff = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { from, to } = req.query as { from: string; to: string };
+
+    const [{ data: snapA }, { data: snapB }] = await Promise.all([
+      supabase.from('snapshots').select('normalised, workflow_id').eq('id', from).single(),
+      supabase.from('snapshots').select('normalised, workflow_id').eq('id', to).single(),
+    ]);
+
+    if (!snapA || !snapB) return res.status(404).json({ error: 'Snapshot not found' });
+
+    const diff = diffWorkflows(snapA.normalised, snapB.normalised);
+    res.json({ diff, from, to });
+  } catch (err) { next(err); }
+};</pre>`
+          },
+          {
+            title: 'Build auth middleware',
+            difficulty: 'medium',
+            tags: ['Security', 'Supabase'],
+            detail: `<p>Validates the Supabase JWT on every API request and attaches the user + team_id to the request.</p>
+<h4>src/middleware/auth.middleware.ts</h4>
+<pre>import { Request, Response, NextFunction } from 'express';
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_ANON_KEY!
+);
+
+declare global {
+  namespace Express {
+    interface Request {
+      user: { id: string; team_id: string; role: string };
+    }
+  }
+}
+
+export const authMiddleware = async (req: Request, res: Response, next: NextFunction) => {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  if (!token) return res.status(401).json({ error: 'Missing token' });
+
+  const { data: { user }, error } = await supabase.auth.getUser(token);
+  if (error || !user) return res.status(401).json({ error: 'Invalid token' });
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('team_id, role')
+    .eq('id', user.id)
+    .single();
+
+  if (!profile?.team_id) return res.status(403).json({ error: 'No team assigned' });
+
+  req.user = { id: user.id, team_id: profile.team_id, role: profile.role };
+  next();
+};</pre>`
+          }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'p3',
+    label: 'Next.js Frontend',
+    badge: 'PHASE 3',
+    title: 'Next.js Frontend Setup',
+    desc: 'Scaffold the Next.js App Router project, configure Supabase auth, and build the shared UI components.',
+    groups: [
+      {
+        title: 'Scaffold',
+        steps: [
+          {
+            title: 'Create Next.js app with App Router',
+            difficulty: 'easy',
+            tags: ['Next.js'],
+            detail: `<pre>cd apps/web
+npx create-next-app@latest . --typescript --tailwind --app --src-dir --import-alias "@/*"
+
+# Install additional deps
+npm install @supabase/supabase-js @supabase/ssr
+npm install reactflow
+npm install lucide-react
+npm install clsx tailwind-merge
+npm install axios</pre>
+<h4>Folder structure</h4>
+<pre>apps/web/src/
+├── app/
+│   ├── (auth)/
+│   │   ├── login/page.tsx
+│   │   └── signup/page.tsx
+│   ├── (dashboard)/
+│   │   ├── layout.tsx         ← sidebar + nav shell
+│   │   ├── page.tsx           ← dashboard home
+│   │   ├── workflows/
+│   │   │   ├── page.tsx
+│   │   │   └── [id]/
+│   │   │       ├── page.tsx   ← workflow detail
+│   │   │       ├── compare/page.tsx
+│   │   │       └── incidents/[incidentId]/page.tsx
+│   │   ├── import/page.tsx
+│   │   └── history/page.tsx
+│   └── layout.tsx
+├── components/
+│   ├── ui/                    ← base components
+│   ├── workflow/              ← workflow-specific components
+│   └── diff/                 ← visual compare components
+├── lib/
+│   ├── supabase/
+│   │   ├── client.ts          ← browser client
+│   │   └── server.ts          ← server client (for Server Components)
+│   └── api.ts                 ← axios instance for your Express API
+├── hooks/
+│   ├── useWorkflows.ts
+│   └── useSnapshots.ts
+└── types/</pre>`
+          },
+          {
+            title: 'Configure Supabase clients',
+            difficulty: 'medium',
+            tags: ['Supabase', 'Next.js'],
+            detail: `<h4>src/lib/supabase/client.ts (browser)</h4>
+<pre>import { createBrowserClient } from '@supabase/ssr';
+
+export function createClient() {
+  return createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+}</pre>
+<h4>src/lib/supabase/server.ts (Server Components)</h4>
+<pre>import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
+
+export async function createClient() {
+  const cookieStore = await cookies();
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() { return cookieStore.getAll(); },
+        setAll(c) { c.forEach(({ name, value, options }) => cookieStore.set(name, value, options)); },
+      },
+    }
+  );
+}</pre>
+<div class="info-box">Use the server client in Server Components and Route Handlers. Use the browser client in Client Components ('use client').</div>`
+          },
+          {
+            title: 'Set up API client for Express backend',
+            difficulty: 'easy',
+            tags: ['Axios'],
+            detail: `<h4>src/lib/api.ts</h4>
+<pre>import axios from 'axios';
+import { createClient } from './supabase/client';
+
+const api = axios.create({
+  baseURL: process.env.NEXT_PUBLIC_API_URL + '/api/v1',
+});
+
+// Attach Supabase JWT to every request
+api.interceptors.request.use(async (config) => {
+  const supabase = createClient();
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session?.access_token) {
+    config.headers.Authorization = \`Bearer \${session.access_token}\`;
+  }
+  return config;
+});
+
+export default api;</pre>`
+          },
+          {
+            title: 'Configure Tailwind with FlowLens design tokens',
+            difficulty: 'easy',
+            tags: ['Tailwind', 'Design'],
+            detail: `<h4>tailwind.config.ts</h4>
+<pre>import type { Config } from 'tailwindcss';
+
+const config: Config = {
+  content: ['./src/**/*.{ts,tsx}'],
+  theme: {
+    extend: {
+      colors: {
+        surface: {
+          DEFAULT: '#10131a',
+          2: '#161b22',
+          3: '#1c2230',
+        },
+        brand: {
+          blue: '#3b82f6',
+          purple: '#a855f7',
+        },
+        status: {
+          success: '#22c55e',
+          warning: '#f59e0b',
+          error: '#ef4444',
+        },
+        border: {
+          DEFAULT: '#30363d',
+          light: '#21262d',
+        },
+      },
+      fontFamily: {
+        sans: ['var(--font-geist-sans)', 'system-ui', 'sans-serif'],
+        mono: ['var(--font-geist-mono)', 'monospace'],
+      },
+      borderRadius: { DEFAULT: '8px' },
+    },
+  },
+};
+
+export default config;</pre>`
+          }
+        ]
+      },
+      {
+        title: 'Auth pages',
+        steps: [
+          {
+            title: 'Build login and signup pages',
+            difficulty: 'medium',
+            tags: ['Supabase Auth'],
+            detail: `<h4>src/app/(auth)/login/page.tsx</h4>
+<pre>'use client';
+import { useState } from 'react';
+import { createClient } from '@/lib/supabase/client';
+import { useRouter } from 'next/navigation';
+
+export default function LoginPage() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const router = useRouter();
+  const supabase = createClient();
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) { setError(error.message); return; }
+    router.push('/');
+  };
+
+  return (
+    &lt;div className="min-h-screen bg-surface flex items-center justify-center"&gt;
+      &lt;div className="w-full max-w-sm bg-surface-2 border border-border rounded-lg p-8"&gt;
+        &lt;h1 className="text-xl font-semibold text-white mb-6"&gt;Sign in to FlowLens&lt;/h1&gt;
+        &lt;form onSubmit={handleLogin} className="space-y-4"&gt;
+          &lt;input type="email" value={email} onChange={e => setEmail(e.target.value)}
+            placeholder="Email" required
+            className="w-full bg-surface border border-border rounded px-3 py-2 text-white text-sm" /&gt;
+          &lt;input type="password" value={password} onChange={e => setPassword(e.target.value)}
+            placeholder="Password" required
+            className="w-full bg-surface border border-border rounded px-3 py-2 text-white text-sm" /&gt;
+          {error && &lt;p className="text-status-error text-sm"&gt;{error}&lt;/p&gt;}
+          &lt;button type="submit"
+            className="w-full bg-brand-blue text-white rounded py-2 text-sm font-medium hover:opacity-90"&gt;
+            Sign in
+          &lt;/button&gt;
+        &lt;/form&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+  );
+}</pre>
+<div class="info-box">Build signup the same way using supabase.auth.signUp(). After signup, create the team and profile records in your Express API.</div>`
+          },
+          {
+            title: 'Add auth middleware to protect routes',
+            difficulty: 'medium',
+            tags: ['Next.js', 'Security'],
+            detail: `<h4>src/middleware.ts (root of apps/web/src)</h4>
+<pre>import { createServerClient } from '@supabase/ssr';
+import { NextResponse, type NextRequest } from 'next/server';
+
+export async function middleware(request: NextRequest) {
+  let supabaseResponse = NextResponse.next({ request });
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() { return request.cookies.getAll(); },
+        setAll(c) {
+          c.forEach(({ name, value }) => request.cookies.set(name, value));
+          supabaseResponse = NextResponse.next({ request });
+          c.forEach(({ name, value, options }) => supabaseResponse.cookies.set(name, value, options));
+        },
+      },
+    }
+  );
+
+  const { data: { user } } = await supabase.auth.getUser();
+
+  // Redirect unauthenticated users to login
+  const isAuthPage = request.nextUrl.pathname.startsWith('/login') ||
+                     request.nextUrl.pathname.startsWith('/signup');
+  if (!user && !isAuthPage) {
+    return NextResponse.redirect(new URL('/login', request.url));
+  }
+
+  return supabaseResponse;
+}
+
+export const config = {
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+};</pre>`
+          }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'p4',
+    label: 'Dashboard UI',
+    badge: 'PHASE 4',
+    title: 'Dashboard & Workflow UI',
+    desc: 'Build the dashboard, workflow list, and workflow detail pages. These are the daily-driver screens users see most.',
+    groups: [
+      {
+        title: 'Dashboard',
+        steps: [
+          {
+            title: 'Build the sidebar navigation layout',
+            difficulty: 'medium',
+            tags: ['React', 'Tailwind'],
+            detail: `<h4>src/app/(dashboard)/layout.tsx</h4>
+<pre>import Sidebar from '@/components/Sidebar';
+
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  return (
+    &lt;div className="flex h-screen bg-surface overflow-hidden"&gt;
+      &lt;Sidebar /&gt;
+      &lt;main className="flex-1 overflow-y-auto"&gt;
+        {children}
+      &lt;/main&gt;
+    &lt;/div&gt;
+  );
+}</pre>
+<h4>Sidebar nav items</h4>
+<ul class="checklist">
+  <li>FlowLens logo + team name</li>
+  <li>Dashboard (overview)</li>
+  <li>Workflows (list)</li>
+  <li>Incidents (open issues)</li>
+  <li>Import (add workflow)</li>
+  <li>History (change log)</li>
+  <li>Settings (bottom)</li>
+</ul>`
+          },
+          {
+            title: 'Build workflow health cards for dashboard',
+            difficulty: 'medium',
+            tags: ['React'],
+            detail: `<p>Each card shows: workflow name, platform badge, status indicator, last snapshot time, and an Investigate button if failing.</p>
+<pre>'use client';
+import { useEffect, useState } from 'react';
+import api from '@/lib/api';
+
+interface Workflow {
+  id: string; name: string; platform: string;
+  status: 'healthy' | 'degraded' | 'failing' | 'unknown';
+  last_snapshot_at: string;
+}
+
+const statusColors = {
+  healthy: 'text-status-success',
+  degraded: 'text-status-warning',
+  failing: 'text-status-error',
+  unknown: 'text-gray-500',
+};
+
+export default function WorkflowCard({ workflow }: { workflow: Workflow }) {
+  return (
+    &lt;div className="bg-surface-2 border border-border rounded-lg p-4 hover:border-brand-blue/40 transition-colors"&gt;
+      &lt;div className="flex items-start justify-between"&gt;
+        &lt;div&gt;
+          &lt;span className="text-xs text-gray-500 uppercase tracking-wide"&gt;{workflow.platform}&lt;/span&gt;
+          &lt;h3 className="text-sm font-medium text-white mt-1"&gt;{workflow.name}&lt;/h3&gt;
+        &lt;/div&gt;
+        &lt;span className={\`text-xs font-medium \${statusColors[workflow.status]}\`}&gt;
+          {workflow.status}
+        &lt;/span&gt;
+      &lt;/div&gt;
+      &lt;p className="text-xs text-gray-600 mt-3"&gt;
+        Last snapshot: {new Date(workflow.last_snapshot_at).toLocaleString()}
+      &lt;/p&gt;
+      {workflow.status === 'failing' &amp;&amp; (
+        &lt;button className="mt-3 w-full text-xs bg-status-error/10 text-status-error border border-status-error/20 rounded py-1.5 hover:bg-status-error/20"&gt;
+          Investigate
+        &lt;/button&gt;
+      )}
+    &lt;/div&gt;
+  );
+}</pre>`
+          }
+        ]
+      },
+      {
+        title: 'Workflow graph',
+        steps: [
+          {
+            title: 'Build the React Flow workflow graph component',
+            difficulty: 'hard',
+            tags: ['React Flow', 'New'],
+            detail: `<p>This renders the workflow as an interactive node graph. Nodes are colour-coded by their diff status.</p>
+<pre>'use client';
+import ReactFlow, { Node, Edge, Background, Controls, MiniMap } from 'reactflow';
+import 'reactflow/dist/style.css';
+import { NormalisedWorkflow, WorkflowDiff } from '@/types/flowlens.types';
+
+interface Props {
+  workflow: NormalisedWorkflow;
+  diff?: WorkflowDiff;
+}
+
+const statusColors: Record<string, string> = {
+  added: '#22c55e',
+  removed: '#ef4444',
+  modified: '#f59e0b',
+  unchanged: '#30363d',
+};
+
+export default function WorkflowGraph({ workflow, diff }: Props) {
+  const diffMap = new Map(diff?.nodes.map(n => [n.nodeId, n.status]) || []);
+
+  const nodes: Node[] = workflow.nodes.map(n => ({
+    id: n.id,
+    position: n.position || { x: 0, y: 0 },
+    data: { label: n.label, type: n.type },
+    style: {
+      background: '#161b22',
+      border: \`1px solid \${statusColors[diffMap.get(n.id) || 'unchanged']}\`,
+      borderRadius: 8,
+      color: '#e6edf3',
+      fontSize: 12,
+      padding: '8px 12px',
+    },
+  }));
+
+  const edges: Edge[] = workflow.edges.map(e => ({
+    id: e.id,
+    source: e.source,
+    target: e.target,
+    style: { stroke: '#30363d' },
+    animated: false,
+  }));
+
+  return (
+    &lt;div style={{ height: 400, background: '#10131a', borderRadius: 8 }}&gt;
+      &lt;ReactFlow nodes={nodes} edges={edges} fitView&gt;
+        &lt;Background color="#1c2230" gap={20} /&gt;
+        &lt;Controls /&gt;
+      &lt;/ReactFlow&gt;
+    &lt;/div&gt;
+  );
+}</pre>
+<div class="warn-box">React Flow requires 'use client'. Never put it in a Server Component.</div>`
+          },
+          {
+            title: 'Build the visual compare (split-view diff) screen',
+            difficulty: 'hard',
+            tags: ['React Flow', 'Core Feature'],
+            detail: `<p>Two graphs side by side — "Last Working" vs "Current Broken" — with diff colour coding on both.</p>
+<ul class="checklist">
+  <li>Fetch the two snapshots from the API</li>
+  <li>Call the diff endpoint to get the WorkflowDiff</li>
+  <li>Render two WorkflowGraph components side by side</li>
+  <li>Pass the diff to both so matching nodes highlight consistently</li>
+  <li>Show the AI explanation card below — fetch from /ai/analyse</li>
+  <li>Add Restore button (calls POST /snapshots/restore)</li>
+</ul>
+<div class="info-box">For the split view, use a CSS grid with two equal columns. Each panel has its own React Flow instance with the same diff object passed to both for consistent highlighting.</div>`
+          }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'p5',
+    label: 'Import & Onboarding',
+    badge: 'PHASE 5',
+    title: 'Import Screen & Onboarding',
+    desc: 'Build the workflow import flow — the entry point for new users. Keep it frictionless.',
+    groups: [
+      {
+        title: 'Import screen',
+        steps: [
+          {
+            title: 'Build drag-and-drop JSON upload component',
+            difficulty: 'medium',
+            tags: ['React'],
+            detail: `<pre>'use client';
+import { useCallback, useState } from 'react';
+import api from '@/lib/api';
+
+export default function ImportPage() {
+  const [dragging, setDragging] = useState(false);
+  const [status, setStatus] = useState&lt;'idle'|'processing'|'done'|'error'&gt;('idle');
+
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (!file || !file.name.endsWith('.json')) return;
+
+    const text = await file.text();
+    const raw_json = JSON.parse(text);
+    setStatus('processing');
+
+    try {
+      // 1. Create workflow record
+      const { data: { workflow } } = await api.post('/workflows', {
+        name: raw_json.name || file.name.replace('.json', ''),
+        platform: 'n8n',  // detect from JSON in future
+      });
+
+      // 2. Import snapshot
+      await api.post('/snapshots/import', {
+        workflow_id: workflow.id,
+        platform: 'n8n',
+        raw_json,
+        source: 'import',
+      });
+
+      setStatus('done');
+    } catch { setStatus('error'); }
+  }, []);
+
+  return (
+    &lt;div className="p-8"&gt;
+      &lt;h1 className="text-xl font-semibold text-white mb-6"&gt;Import workflow&lt;/h1&gt;
+      &lt;div
+        onDragOver={e => { e.preventDefault(); setDragging(true); }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={handleDrop}
+        className={\`border-2 border-dashed rounded-lg p-16 text-center transition-colors
+          \${dragging ? 'border-brand-blue bg-brand-blue/5' : 'border-border'}\`}
+      &gt;
+        &lt;p className="text-gray-400 text-sm"&gt;Drop your n8n workflow JSON here&lt;/p&gt;
+        &lt;p className="text-gray-600 text-xs mt-2"&gt;or click to browse&lt;/p&gt;
+      &lt;/div&gt;
+      {status === 'done' &amp;&amp; &lt;p className="text-status-success text-sm mt-4"&gt;Workflow imported successfully&lt;/p&gt;}
+    &lt;/div&gt;
+  );
+}</pre>`
+          },
+          {
+            title: 'Add platform auto-detection on import',
+            difficulty: 'medium',
+            tags: ['Logic'],
+            detail: `<p>Detect platform from the JSON structure so users don't need to select it manually.</p>
+<pre>// src/lib/detectPlatform.ts
+export function detectPlatform(json: Record&lt;string, unknown&gt;): 'n8n' | 'zapier' | 'make' | 'unknown' {
+  // n8n has a 'nodes' array with typed node objects
+  if (Array.isArray(json.nodes) && json.connections) return 'n8n';
+  // Zapier has 'steps' array
+  if (Array.isArray(json.steps) && json.title) return 'zapier';
+  // Make has 'flow' array
+  if (Array.isArray(json.flow) && json.metadata) return 'make';
+  return 'unknown';
+}</pre>`
+          }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'p6',
+    label: 'AI Features',
+    badge: 'PHASE 6',
+    title: 'AI Features',
+    desc: 'Wire up the AI layer: root cause analysis on incidents, and the conversational AI assistant.',
+    groups: [
+      {
+        title: 'Incident analysis',
+        steps: [
+          {
+            title: 'Build the incident analysis endpoint',
+            difficulty: 'medium',
+            tags: ['Anthropic', 'Core'],
+            detail: `<h4>POST /api/v1/incidents/:id/analyse</h4>
+<pre>import { diffWorkflows } from '../services/diff.service';
+import { analyseRootCause } from '../services/ai.service';
+
+export const analyseIncident = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { data: incident } = await supabase
+      .from('incidents')
+      .select('*, snapshots!snapshot_before(*), snapshots!snapshot_after(*)')
+      .eq('id', req.params.id)
+      .single();
+
+    if (!incident) return res.status(404).json({ error: 'Incident not found' });
+
+    // Generate diff
+    const diff = diffWorkflows(
+      incident.snapshot_before.normalised,
+      incident.snapshot_after.normalised
+    );
+
+    // Get AI analysis
+    const analysis = await analyseRootCause(diff, incident.error_message);
+
+    // Store result on incident
+    await supabase.from('incidents').update({
+      root_cause: analysis.root_cause,
+      confidence: analysis.confidence,
+      impact_summary: analysis.impact_summary,
+      suggested_fix: analysis.suggested_fix,
+    }).eq('id', req.params.id);
+
+    res.json({ analysis, diff });
+  } catch (err) { next(err); }
+};</pre>
+<div class="warn-box">Cache the AI result on the incident record. Never call the AI API again for the same incident — store the result and retrieve it. This prevents runaway costs.</div>`
+          },
+          {
+            title: 'Build the AI assistant chat endpoint',
+            difficulty: 'hard',
+            tags: ['Anthropic', 'Streaming'],
+            detail: `<p>The assistant streams responses so users see output immediately without waiting for the full response.</p>
+<h4>POST /api/v1/ai/chat (streaming)</h4>
+<pre>export const aiChat = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { messages, workflow_id, incident_id } = req.body;
+
+    // Fetch context: current workflow diff if incident_id provided
+    let context = '';
+    if (incident_id) {
+      const { data: incident } = await supabase
+        .from('incidents').select('root_cause, diff_summary').eq('id', incident_id).single();
+      if (incident) context = \`Incident context: \${JSON.stringify(incident)}\`;
+    }
+
+    // Set up SSE
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+
+    const stream = await anthropic.messages.stream({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 1000,
+      system: \`You are FlowLens AI, a workflow debugging assistant.
+You help users understand why their automations failed and how to fix them.
+Be concise and specific. Reference node names and field names when relevant.
+\${context}\`,
+      messages: messages.map((m: any) => ({ role: m.role, content: m.content })),
+    });
+
+    for await (const chunk of stream) {
+      if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
+        res.write(\`data: \${JSON.stringify({ text: chunk.delta.text })}\\n\\n\`);
+      }
+    }
+
+    res.write('data: [DONE]\\n\\n');
+    res.end();
+  } catch (err) { next(err); }
+};</pre>`
+          },
+          {
+            title: 'Build the AI assistant UI component',
+            difficulty: 'medium',
+            tags: ['React', 'SSE'],
+            detail: `<p>Chat panel that streams the AI response token by token.</p>
+<pre>'use client';
+import { useState, useRef } from 'react';
+
+export default function AIAssistant({ workflowId }: { workflowId: string }) {
+  const [messages, setMessages] = useState&lt;{role:string; content:string}[]&gt;([]);
+  const [input, setInput] = useState('');
+  const [streaming, setStreaming] = useState(false);
+
+  const sendMessage = async () => {
+    if (!input.trim() || streaming) return;
+    const userMsg = { role: 'user', content: input };
+    const updated = [...messages, userMsg];
+    setMessages([...updated, { role: 'assistant', content: '' }]);
+    setInput('');
+    setStreaming(true);
+
+    const res = await fetch(\`\${process.env.NEXT_PUBLIC_API_URL}/api/v1/ai/chat\`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json',
+        Authorization: \`Bearer \${await getToken()}\` },
+      body: JSON.stringify({ messages: updated, workflow_id: workflowId }),
+    });
+
+    const reader = res.body!.getReader();
+    const decoder = new TextDecoder();
+    let aiText = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const lines = decoder.decode(value).split('\\n');
+      lines.forEach(line => {
+        if (line.startsWith('data: ') && line !== 'data: [DONE]') {
+          try {
+            const { text } = JSON.parse(line.slice(6));
+            aiText += text;
+            setMessages(prev => [
+              ...prev.slice(0, -1),
+              { role: 'assistant', content: aiText }
+            ]);
+          } catch {}
+        }
+      });
+    }
+    setStreaming(false);
+  };
+
+  return (
+    &lt;div className="flex flex-col h-full bg-surface-2 border border-border rounded-lg"&gt;
+      &lt;div className="flex-1 overflow-y-auto p-4 space-y-3"&gt;
+        {messages.map((m, i) => (
+          &lt;div key={i} className={\`text-sm \${m.role === 'user' ? 'text-gray-300' : 'text-white'}\`}&gt;
+            &lt;span className="text-xs text-gray-600 mr-2"&gt;{m.role === 'user' ? 'You' : 'AI'}&lt;/span&gt;
+            {m.content}
+          &lt;/div&gt;
+        ))}
+      &lt;/div&gt;
+      &lt;div className="p-3 border-t border-border flex gap-2"&gt;
+        &lt;input value={input} onChange={e => setInput(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && sendMessage()}
+          placeholder="Ask about this workflow..."
+          className="flex-1 bg-surface border border-border rounded px-3 py-2 text-sm text-white" /&gt;
+        &lt;button onClick={sendMessage} disabled={streaming}
+          className="px-3 py-2 bg-brand-blue text-white rounded text-sm disabled:opacity-40"&gt;
+          Send
+        &lt;/button&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+  );
+}</pre>`
+          }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'p7',
+    label: 'Webhooks',
+    badge: 'PHASE 7',
+    title: 'Webhook Ingestion',
+    desc: 'Receive real-time failure events from n8n. This is what makes FlowLens proactive instead of reactive.',
+    groups: [
+      {
+        title: 'Webhook endpoint',
+        steps: [
+          {
+            title: 'Build the webhook receiver endpoint',
+            difficulty: 'medium',
+            tags: ['Express', 'Security'],
+            detail: `<h4>POST /api/v1/webhooks/n8n</h4>
+<pre>// Validate webhook signature to prevent spoofing
+function validateN8nSignature(payload: string, signature: string, secret: string): boolean {
+  const crypto = require('crypto');
+  const expected = crypto.createHmac('sha256', secret).update(payload).digest('hex');
+  return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
+}
+
+export const receiveN8nWebhook = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const signature = req.headers['x-n8n-signature'] as string;
+    const rawBody = JSON.stringify(req.body);
+
+    // Find workflow by external_id
+    const { data: workflow } = await supabase
+      .from('workflows')
+      .select('id, team_id')
+      .eq('external_id', req.body.workflowId)
+      .single();
+
+    if (!workflow) return res.status(404).json({ error: 'Unknown workflow' });
+
+    // Store snapshot + update workflow status
+    const executionStatus = req.body.status === 'error' ? 'failure' : 'success';
+    const { data: snapshot } = await supabase.from('snapshots').insert({
+      workflow_id: workflow.id,
+      team_id: workflow.team_id,
+      normalised: normalise('n8n', req.body.workflow),
+      raw: req.body,
+      source: 'webhook',
+      execution_status: executionStatus,
+      error_message: req.body.error?.message,
+    }).select().single();
+
+    // If failure, create an incident
+    if (executionStatus === 'failure') {
+      const { data: prevSnapshot } = await supabase
+        .from('snapshots')
+        .select('id')
+        .eq('workflow_id', workflow.id)
+        .eq('execution_status', 'success')
+        .order('created_at', { ascending: false })
+        .limit(1).single();
+
+      await supabase.from('incidents').insert({
+        workflow_id: workflow.id,
+        team_id: workflow.team_id,
+        snapshot_before: prevSnapshot?.id,
+        snapshot_after: snapshot.id,
+        error_message: req.body.error?.message,
+      });
+
+      // Update workflow status
+      await supabase.from('workflows').update({ status: 'failing' }).eq('id', workflow.id);
+    }
+
+    res.json({ ok: true });
+  } catch (err) { next(err); }
+};</pre>
+<div class="info-box">Always respond 200 immediately — don't let heavy processing block the webhook response. Move AI analysis to a background job triggered after the incident is created.</div>`
+          }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'p8',
+    label: 'Deployment',
+    badge: 'PHASE 8',
+    title: 'Deployment',
+    desc: 'Deploy the API to Railway and the frontend to Vercel. Get a working production URL.',
+    groups: [
+      {
+        title: 'API deployment (Railway)',
+        steps: [
+          {
+            title: 'Add Dockerfile for Express API',
+            difficulty: 'easy',
+            tags: ['Docker'],
+            detail: `<h4>apps/api/Dockerfile</h4>
+<pre>FROM node:20-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --only=production
+COPY dist/ ./dist/
+EXPOSE 4000
+CMD ["node", "dist/app.js"]</pre>
+<h4>apps/api/package.json scripts</h4>
+<pre>"scripts": {
+  "build": "tsc",
+  "start": "node dist/app.js",
+  "dev": "ts-node-dev --respawn src/app.ts"
+}</pre>
+<div class="info-box">Railway detects the Dockerfile automatically. Push to GitHub, create Railway project, connect repo, set root directory to apps/api.</div>`
+          },
+          {
+            title: 'Set environment variables in Railway',
+            difficulty: 'easy',
+            tags: ['Railway'],
+            detail: `<ul class="checklist">
+  <li>SUPABASE_URL</li>
+  <li>SUPABASE_SERVICE_ROLE_KEY</li>
+  <li>ANTHROPIC_API_KEY</li>
+  <li>FRONTEND_URL (your Vercel URL)</li>
+  <li>NODE_ENV=production</li>
+</ul>
+<div class="warn-box">Never commit .env files. Use Railway's dashboard to set secrets. Add .env* to your .gitignore.</div>`
+          },
+          {
+            title: 'Deploy frontend to Vercel',
+            difficulty: 'easy',
+            tags: ['Vercel'],
+            detail: `<ul class="checklist">
+  <li>Connect GitHub repo to Vercel</li>
+  <li>Set root directory: apps/web</li>
+  <li>Framework preset: Next.js (auto-detected)</li>
+  <li>Add env vars: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, NEXT_PUBLIC_API_URL</li>
+  <li>Deploy and verify all pages load</li>
+  <li>Test login → dashboard → import flow end to end</li>
+</ul>
+<div class="success-box">At this point you have a working deployed product. The core loop: import workflow → view graph → create snapshot → diff two snapshots → AI analysis should all work.</div>`
+          }
+        ]
+      },
+      {
+        title: 'Pre-launch checks',
+        steps: [
+          {
+            title: 'Security checklist before sharing with anyone',
+            difficulty: 'medium',
+            tags: ['Security'],
+            detail: `<ul class="checklist">
+  <li>RLS enabled and tested on all Supabase tables</li>
+  <li>Service role key only in Express backend env, never in frontend</li>
+  <li>Anthropic API key only in Express backend env</li>
+  <li>Rate limiting on AI endpoints (max 20 req/min per user)</li>
+  <li>Webhook signature validation active</li>
+  <li>No console.log with sensitive data in production</li>
+  <li>CORS configured to only allow your Vercel domain</li>
+  <li>Error messages don't expose stack traces to the client</li>
+  <li>All user inputs validated before hitting the database</li>
+</ul>`
+          },
+          {
+            title: 'Add rate limiting to Express',
+            difficulty: 'easy',
+            tags: ['Security', 'Express'],
+            detail: `<pre>npm install express-rate-limit
+
+import rateLimit from 'express-rate-limit';
+
+// General API limit
+const apiLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 300 });
+
+// Strict limit for AI endpoints (they're expensive)
+const aiLimiter = rateLimit({ windowMs: 60 * 1000, max: 20,
+  message: { error: 'Too many AI requests. Please wait a minute.' }
+});
+
+app.use('/api/v1', apiLimiter);
+app.use('/api/v1/ai', aiLimiter);</pre>`
+          }
+        ]
+      }
+    ]
+  }
+];
+
+// ─── State ───────────────────────────────────────────────────────────────────
+const STATE_KEY = 'flowlens_guide_v1';
+
+function loadState() {
+  try { return JSON.parse(localStorage.getItem(STATE_KEY) || '{}'); } catch { return {}; }
+}
+
+function saveState(state) {
+  localStorage.setItem(STATE_KEY, JSON.stringify(state));
+}
+
+// ─── Render ───────────────────────────────────────────────────────────────────
+let currentPhase = 0;
+let checked = loadState();
+
+function allStepIds() {
+  return phases.flatMap(p => p.groups.flatMap(g => g.steps.map((s, si) => p.id + '-' + g.title + '-' + si)));
+}
+
+function phaseStepIds(phase) {
+  return phase.groups.flatMap(g => g.steps.map((_, si) => phase.id + '-' + g.title + '-' + si));
+}
+
+function updateProgress() {
+  const all = allStepIds();
+  const done = all.filter(id => checked[id]).length;
+  const pct = all.length ? Math.round((done / all.length) * 100) : 0;
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressText').textContent = done + ' of ' + all.length + ' done';
+  document.getElementById('progressPct').textContent = pct + '%';
+
+  phases.forEach((p, pi) => {
+    const ids = phaseStepIds(p);
+    const pDone = ids.filter(id => checked[id]).length;
+    const navItem = document.querySelector('[data-phase="' + pi + '"]');
+    if (!navItem) return;
+    const dot = navItem.querySelector('.phase-dot');
+    const count = navItem.querySelector('.phase-count');
+    if (count) count.textContent = pDone + '/' + ids.length;
+    if (pDone === ids.length && ids.length > 0) {
+      navItem.classList.add('done');
+      if (dot) dot.style.background = 'var(--green)';
+    } else {
+      navItem.classList.remove('done');
+      if (dot) dot.style.background = '';
+    }
+  });
+}
+
+function renderNav() {
+  const nav = document.getElementById('phaseNav');
+  nav.innerHTML = phases.map((p, pi) => {
+    const ids = phaseStepIds(p);
+    const done = ids.filter(id => checked[id]).length;
+    return '<div class="phase-nav-item ' + (pi === currentPhase ? 'active' : '') + '" data-phase="' + pi + '" onclick="goPhase(' + pi + ')">'
+      + '<span class="phase-dot"></span>'
+      + '<span>' + p.label + '</span>'
+      + '<span class="phase-count">' + done + '/' + ids.length + '</span>'
+      + '</div>';
+  }).join('');
+  updateProgress();
+}
+
+function tagClass(t) {
+  if (t === 'hard') return 'tag-hard';
+  if (t === 'medium') return 'tag-medium';
+  if (t === 'easy') return 'tag-easy';
+  if (t === 'New' || t === 'Core Logic' || t === 'Core Feature') return 'tag-new';
+  return 'tag-tool';
+}
+
+function renderPhase() {
+  const p = phases[currentPhase];
+  const main = document.getElementById('mainContent');
+
+  const stepsHtml = p.groups.map(function(g) {
+    const stepCards = g.steps.map(function(s, si) {
+      const stepId = p.id + '-' + g.title + '-' + si;
+      const isDone = !!checked[stepId];
+      const tags = [s.difficulty].concat(s.tags || []).map(function(t) {
+        return '<span class="tag ' + tagClass(t) + '">' + t + '</span>';
+      }).join('');
+      return '<div class="step ' + (isDone ? 'completed' : '') + '" id="step-' + stepId + '">'
+        + '<div class="step-header" onclick="toggleStep(\'' + stepId + '\')">'
+        + '<div class="step-check" onclick="toggleCheck(event,\'' + stepId + '\')">'
+        + '<svg width="10" height="8" viewBox="0 0 10 8" fill="none">'
+        + '<path d="M1 4L3.5 6.5L9 1" stroke="#000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>'
+        + '</svg></div>'
+        + '<div class="step-info">'
+        + '<div class="step-title">' + s.title + '</div>'
+        + '<div class="step-meta">' + tags + '</div>'
+        + '</div>'
+        + '<div class="step-expand">▾ details</div>'
+        + '</div>'
+        + (s.detail ? '<div class="step-body">' + s.detail + '</div>' : '')
+        + '</div>';
+    }).join('');
+
+    return '<div class="step-group">'
+      + '<div class="step-group-title">' + g.title + '</div>'
+      + stepCards
+      + '</div>';
+  }).join('');
+
+  const isFirst = currentPhase === 0;
+  const isLast = currentPhase === phases.length - 1;
+
+  main.innerHTML = '<div class="phase-header">'
+    + '<div><div class="phase-badge">' + p.badge + '</div></div>'
+    + '<div><div class="phase-title">' + p.title + '</div>'
+    + '<div class="phase-desc">' + p.desc + '</div></div>'
+    + '</div>'
+    + stepsHtml
+    + '<div class="nav-btns">'
+    + '<button class="btn btn-secondary" onclick="goPhase(' + (currentPhase - 1) + ')" ' + (isFirst ? 'disabled' : '') + '>← Previous</button>'
+    + '<button class="btn btn-primary" onclick="goPhase(' + (currentPhase + 1) + ')" ' + (isLast ? 'disabled' : '') + '>Next phase →</button>'
+    + '</div>';
+}
+
+function goPhase(index) {
+  if (index < 0 || index >= phases.length) return;
+  currentPhase = index;
+  renderNav();
+  renderPhase();
+  document.getElementById('mainContent').scrollTop = 0;
+}
+
+function toggleCheck(e, stepId) {
+  e.stopPropagation();
+  checked[stepId] = !checked[stepId];
+  saveState(checked);
+  const el = document.getElementById('step-' + stepId);
+  if (el) el.classList.toggle('completed', checked[stepId]);
+  updateProgress();
+  renderNav();
+}
+
+function toggleStep(stepId) {
+  const el = document.getElementById('step-' + stepId);
+  if (el) el.classList.toggle('expanded');
+}
+
+window.goPhase = goPhase;
+window.toggleCheck = toggleCheck;
+window.toggleStep = toggleStep;
+
+renderNav();
+renderPhase();
+</script>
+</body>
+</html>
